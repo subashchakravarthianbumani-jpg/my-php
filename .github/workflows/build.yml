@@ -37,16 +37,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    # Make secrets available as env vars (handy for if: and with:)
+    # Pull values from repository secrets (Settings → Secrets and variables → Actions)
     env:
-      FTP_SERVER:   ${{ testing.pixoustech.com }}
-      FTP_USERNAME: ${{ test }}
-      FTP_PASSWORD: ${{ BA_i?Tz]EACX }}
-      FTP_TARGET_DIR: ${{ /public_html/my-php/ }}
-      FTP_PROTOCOL: ${{ ftp }} # ftp | ftps | sftp (optional)
-      FTP_PORT:     ${{ 21 }}     # optional (defaults to 21 for ftp)
+      FTP_SERVER:     ${{ testing.pixoustech.com }}      # e.g. testing.pixoustech.com
+      FTP_USERNAME:   ${{ test }}    # e.g. test
+      FTP_PASSWORD:   ${{ BA_i?Tz]EACX }}    # rotate if exposed
+      FTP_TARGET_DIR: ${{ /public_html/my-php/ }}  # e.g. /public_html/my-php/
+      FTP_PROTOCOL:   ${{ ftp }}    # ftp | ftps | sftp (optional)
+      FTP_PORT:       ${{ 21 }}        # 21 for ftp/ftps, 22 for sftp (optional)
 
-    # IMPORTANT: wrap the whole expression in ${{ ... }}
+    # MUST wrap the whole condition in ${{ ... }}
     if: ${{ github.event_name == 'push'
           && github.ref == 'refs/heads/main'
           && env.FTP_SERVER != ''
@@ -61,11 +61,11 @@ jobs:
       - name: FTP Deploy (root folder -> server)
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: ${{ testing.pixoustech.com }}
-          username: ${{ test }}
-          password: ${{ BA_i?Tz]EACX }}
-          protocol: ${{ env.FTP_PROTOCOL != '' && env.FTP_PROTOCOL || 'ftp' }} # default ftp
-          port: ${{ env.FTP_PORT != '' && env.FTP_PORT || 21 }}                # default 21
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
+          protocol: ${{ env.FTP_PROTOCOL != '' && env.FTP_PROTOCOL || 'ftp' }}  # default ftp
+          port: ${{ env.FTP_PORT != '' && env.FTP_PORT || 21 }}                 # default 21
           local-dir: .
           server-dir: ${{ env.FTP_TARGET_DIR }}
           state-name: .ftp-deploy-sync-state.json
