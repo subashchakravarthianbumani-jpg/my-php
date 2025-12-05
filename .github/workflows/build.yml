@@ -27,12 +27,22 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
-          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }} # optional: ftp | ftps | sftp
-          FTP_PORT: ${{ secrets.FTP_PORT }}
+          FTP_SERVER: "testing.pixoustech.com"
+          FTP_USERNAME: "test"
+          FTP_PASSWORD: "BA_i?Tz]EACX"
+          FTP_TARGET_DIR: "/public_html/my-php/"
+          FTP_PROTOCOL: "ftp"
+          FTP_PORT: "21"       # optional (defaults to 21 for ftp)
+
+        # env:
+        #   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        #   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        #   FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        #   FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+        #   FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        #   FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
+        #   FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }} # optional: ftp | ftps | sftp
+        #   FTP_PORT: ${{ secrets.FTP_PORT }}
         # If you need to pass extra scanner args, uncomment below:
         # with:
         #   args: >
@@ -68,16 +78,24 @@ jobs:
       - name: FTP Deploy (root folder -> server)
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: ${{ testing.pixoustech.com }}            # e.g. testing.pixoustech.com
-          username: ${{ test }}        # e.g. test
-          password: ${{ BA_i?Tz]EACX }}        # your FTP password
-          protocol: ${{ ftp || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
-          # port: ${{ secrets.FTP_PORT || 21 }}        # uncomment if non-default port
-          local-dir: .                                 # deploy EVERYTHING in repo root
-          server-dir: ${{ /public_html/my-php/ }}    # e.g. /public_html/my-php/
-          # Keeps a manifest for faster diffs next run
+          server: ${{ env.FTP_SERVER }}              # e.g. testing.pixoustech.com
+          username: ${{ env.FTP_USERNAME }}          # e.g. test
+          password: ${{ env.FTP_PASSWORD }}
+          protocol: ${{ env.FTP_PROTOCOL || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
+          port: ${{ env.FTP_PORT || 21 }}
+          local-dir: .
+          server-dir: ${{ env.FTP_TARGET_DIR }}      # e.g. /public_html/my-php/
           state-name: .ftp-deploy-sync-state.json
-          # Exclude stuff you never want on the server
+          # server: ${{ testing.pixoustech.com }}            # e.g. testing.pixoustech.com
+          # username: ${{ test }}        # e.g. test
+          # password: ${{ BA_i?Tz]EACX }}        # your FTP password
+          # protocol: ${{ ftp || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
+          # # port: ${{ secrets.FTP_PORT || 21 }}        # uncomment if non-default port
+          # local-dir: .                                 # deploy EVERYTHING in repo root
+          # server-dir: ${{ /public_html/my-php/ }}    # e.g. /public_html/my-php/
+          # # Keeps a manifest for faster diffs next run
+          # state-name: .ftp-deploy-sync-state.json
+          # # Exclude stuff you never want on the server
           exclude: |
             **/.git*
             **/.github/**
