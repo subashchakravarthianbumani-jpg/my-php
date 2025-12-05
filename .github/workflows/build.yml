@@ -65,10 +65,10 @@ jobs:
         github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         success() &&
-        secrets.FTP_SERVER != '' &&
-        secrets.FTP_USERNAME != '' &&
-        secrets.FTP_PASSWORD != '' &&
-        secrets.FTP_TARGET_DIR != ''
+        env.FTP_SERVER != '' &&
+        env.FTP_USERNAME != '' &&
+        env.FTP_PASSWORD != '' &&
+        env.FTP_TARGET_DIR != ''
       }}
       
     steps:
