@@ -69,16 +69,25 @@ jobs:
           FTP_TARGET_DIR: "/public_html/my-php/"
           FTP_PROTOCOL: "ftp"
           FTP_PORT: "21"
-    if: >-
-      ${{
-        github.event_name == 'push' &&
-        github.ref == 'refs/heads/main' &&
-        success() &&
-        env.FTP_SERVER != '' &&
-        env.FTP_USERNAME != '' &&
-        env.FTP_PASSWORD != '' &&
-        env.FTP_TARGET_DIR != ''
-      }}
+    if: >
+       github.event_name == 'push' &&
+       github.ref == 'refs/heads/main' &&
+       success() &&
+       env.FTP_SERVER != '' &&
+       env.FTP_USERNAME != '' &&
+       env.FTP_PASSWORD != '' &&
+       env.FTP_TARGET_DIR != ''
+       
+    # if: >-
+    #   ${{
+    #     github.event_name == 'push' &&
+    #     github.ref == 'refs/heads/main' &&
+    #     success() &&
+    #     env.FTP_SERVER != '' &&
+    #     env.FTP_USERNAME != '' &&
+    #     env.FTP_PASSWORD != '' &&
+    #     env.FTP_TARGET_DIR != ''
+    #   }}
       
     steps:
       - name: Checkout
