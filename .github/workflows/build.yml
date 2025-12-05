@@ -27,68 +27,33 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          FTP_SERVER: "testing.pixoustech.com"
-          FTP_USERNAME: "test"
-          FTP_PASSWORD: "BA_i?Tz]EACX"
-          FTP_TARGET_DIR: "/public_html/my-php/"
-          FTP_PROTOCOL: "ftp"
-          FTP_PORT: "21"       # optional (defaults to 21 for ftp)
-
-        # env:
-        #   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        #   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        #   FTP_SERVER: ${{ secrets.FTP_SERVER }}
-        #   FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-        #   FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        #   FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
-        #   FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }} # optional: ftp | ftps | sftp
-        #   FTP_PORT: ${{ secrets.FTP_PORT }}
-        # If you need to pass extra scanner args, uncomment below:
         # with:
         #   args: >
         #     -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
         #     -Dsonar.projectName=MyProject
 
-      # Optional: fail pipeline when Quality Gate is Red (requires proper server/webhook setup)
-      # - name: SonarQube Quality Gate
-      #   uses: SonarSource/sonarqube-quality-gate-action@v1
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   deploy:
     name: Deploy to FTP
     runs-on: ubuntu-latest
     needs: build
+
+    # Make secrets available as env vars (handy for if: and with:)
     env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          FTP_SERVER: "testing.pixoustech.com"
-          FTP_USERNAME: "test"
-          FTP_PASSWORD: "BA_i?Tz]EACX"
-          FTP_TARGET_DIR: "/public_html/my-php/"
-          FTP_PROTOCOL: "ftp"
-          FTP_PORT: "21"
-    if: >
-       github.event_name == 'push' &&
-       github.ref == 'refs/heads/main' &&
-       success() &&
-       env.FTP_SERVER != '' &&
-       env.FTP_USERNAME != '' &&
-       env.FTP_PASSWORD != '' &&
-       env.FTP_TARGET_DIR != ''
-       
-    # if: >-
-    #   ${{
-    #     github.event_name == 'push' &&
-    #     github.ref == 'refs/heads/main' &&
-    #     success() &&
-    #     env.FTP_SERVER != '' &&
-    #     env.FTP_USERNAME != '' &&
-    #     env.FTP_PASSWORD != '' &&
-    #     env.FTP_TARGET_DIR != ''
-    #   }}
-      
+      FTP_SERVER:   ${{ testing.pixoustech.com }}
+      FTP_USERNAME: ${{ test }}
+      FTP_PASSWORD: ${{ BA_i?Tz]EACX }}
+      FTP_TARGET_DIR: ${{ /public_html/my-php/ }}
+      FTP_PROTOCOL: ${{ ftp }} # ftp | ftps | sftp (optional)
+      FTP_PORT:     ${{ 21 }}     # optional (defaults to 21 for ftp)
+
+    # IMPORTANT: wrap the whole expression in ${{ ... }}
+    if: ${{ github.event_name == 'push'
+          && github.ref == 'refs/heads/main'
+          && env.FTP_SERVER != ''
+          && env.FTP_USERNAME != ''
+          && env.FTP_PASSWORD != ''
+          && env.FTP_TARGET_DIR != '' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,24 +61,14 @@ jobs:
       - name: FTP Deploy (root folder -> server)
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: ${{ env.FTP_SERVER }}              # e.g. testing.pixoustech.com
-          username: ${{ env.FTP_USERNAME }}          # e.g. test
-          password: ${{ env.FTP_PASSWORD }}
-          protocol: ${{ env.FTP_PROTOCOL || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
-          port: ${{ env.FTP_PORT || 21 }}
+          server: ${{ testing.pixoustech.com }}
+          username: ${{ test }}
+          password: ${{ BA_i?Tz]EACX }}
+          protocol: ${{ env.FTP_PROTOCOL != '' && env.FTP_PROTOCOL || 'ftp' }} # default ftp
+          port: ${{ env.FTP_PORT != '' && env.FTP_PORT || 21 }}                # default 21
           local-dir: .
-          server-dir: ${{ env.FTP_TARGET_DIR }}      # e.g. /public_html/my-php/
+          server-dir: ${{ env.FTP_TARGET_DIR }}
           state-name: .ftp-deploy-sync-state.json
-          # server: ${{ testing.pixoustech.com }}            # e.g. testing.pixoustech.com
-          # username: ${{ test }}        # e.g. test
-          # password: ${{ BA_i?Tz]EACX }}        # your FTP password
-          # protocol: ${{ ftp || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
-          # # port: ${{ secrets.FTP_PORT || 21 }}        # uncomment if non-default port
-          # local-dir: .                                 # deploy EVERYTHING in repo root
-          # server-dir: ${{ /public_html/my-php/ }}    # e.g. /public_html/my-php/
-          # # Keeps a manifest for faster diffs next run
-          # state-name: .ftp-deploy-sync-state.json
-          # # Exclude stuff you never want on the server
           exclude: |
             **/.git*
             **/.github/**
