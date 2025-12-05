@@ -7,81 +7,49 @@ on:
 
 jobs:
   build:
-    name: Build and analyze (CI)
+    name: Build and analyze
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # better analysis context
-
-      # --- CI: PHP + Composer + Tests (safe even if you don't have tests yet) ---
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          tools: composer
-          coverage: xdebug
-
-      - name: Install dependencies (Composer)
-        if: ${{ hashFiles('**/composer.json') != '' }}
-        shell: pwsh
-        run: |
-          composer install --no-interaction --prefer-dist
-
-      - name: Run PHPUnit (if phpunit.xml exists)
-        if: ${{ hashFiles('**/phpunit.xml') != '' }}
-        shell: pwsh
-        run: |
-          # Will generate coverage to build/logs/clover.xml if configured in phpunit.xml
-          vendor\bin\phpunit
-
-      # --- SonarQube scan (uses your existing secrets) ---
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-      # If you wish to fail your job when the Quality Gate is red, uncomment:
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
       # - uses: SonarSource/sonarqube-quality-gate-action@v1
       #   timeout-minutes: 5
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # ---------------- Optional CD: deploy over SSH (runs only if secrets exist) ----------------
   deploy:
-    name: Deploy (CD)
+    name: Deploy to FTP
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' && secrets.SSH_TARGET_DIR != '' }}
+    # run only on push to main AND only if all FTP secrets exist
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.FTP_SERVER != '' && secrets.FTP_USERNAME != '' && secrets.FTP_PASSWORD != '' && secrets.FTP_TARGET_DIR != '' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload files via SCP
-        uses: appleboy/scp-action@v0.1.7
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          source: |
-            *.php
-            public/**
-            composer.json
-            composer.lock
-          target: ${{ secrets.SSH_TARGET_DIR }}
-          overwrite: true
-
-      - name: Reload web server (Apache/Nginx)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            sudo systemctl reload apache2 || sudo systemctl reload nginx || true
+          server: ${{ testing.pixoustech.com }}
+          username: ${{ test }}
+          password: ${{ BA_i?Tz]EACX }}
+          protocol: ${{ ftp }}   # 'ftp' (recommended) or 'ftp'
+          # port: ${{ 21 }}                   # add only if your host uses a non-default port
+          local-dir: .
+          server-dir: ${{ /public_html/my-php/ }}
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/tests/**
+            **/node_modules/**
+            **/vendor/**
+            **/*.md
