@@ -61,13 +61,13 @@ jobs:
       - name: FTP Deploy (root folder -> server)
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: ${{ secrets.FTP_SERVER }}            # e.g. testing.pixoustech.com
-          username: ${{ secrets.FTP_USERNAME }}        # e.g. test
-          password: ${{ secrets.FTP_PASSWORD }}        # your FTP password
-          protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
+          server: ${{ testing.pixoustech.com }}            # e.g. testing.pixoustech.com
+          username: ${{ test }}        # e.g. test
+          password: ${{ BA_i?Tz]EACX }}        # your FTP password
+          protocol: ${{ ftp || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
           # port: ${{ secrets.FTP_PORT || 21 }}        # uncomment if non-default port
           local-dir: .                                 # deploy EVERYTHING in repo root
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}    # e.g. /public_html/my-php/
+          server-dir: ${{ /public_html/my-php/ }}    # e.g. /public_html/my-php/
           # Keeps a manifest for faster diffs next run
           state-name: .ftp-deploy-sync-state.json
           # Exclude stuff you never want on the server
