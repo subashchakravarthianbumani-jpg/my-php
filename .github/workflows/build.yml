@@ -1,26 +1,41 @@
-name: Build
+name: CI • SonarQube + FTP Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    name: Build and analyze
+    name: Build & SonarQube Analyze
     runs-on: windows-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: SonarSource/sonarqube-scan-action@v6
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@v1
+        # If you need to pass extra scanner args, uncomment below:
+        # with:
+        #   args: >
+        #     -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+        #     -Dsonar.projectName=MyProject
+
+      # Optional: fail pipeline when Quality Gate is Red (requires proper server/webhook setup)
+      # - name: SonarQube Quality Gate
+      #   uses: SonarSource/sonarqube-quality-gate-action@v1
       #   timeout-minutes: 5
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -29,27 +44,37 @@ jobs:
     name: Deploy to FTP
     runs-on: ubuntu-latest
     needs: build
-    # run only on push to main AND only if all FTP secrets exist
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.FTP_SERVER != '' && secrets.FTP_USERNAME != '' && secrets.FTP_PASSWORD != '' && secrets.FTP_TARGET_DIR != '' }}
-
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/main' &&
+        success() &&
+        secrets.FTP_SERVER != '' &&
+        secrets.FTP_USERNAME != '' &&
+        secrets.FTP_PASSWORD != '' &&
+        secrets.FTP_TARGET_DIR != ''
+      }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: FTP Deploy
+      - name: FTP Deploy (root folder -> server)
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: ${{ testing.pixoustech.com }}
-          username: ${{ test }}
-          password: ${{ BA_i?Tz]EACX }}
-          protocol: ${{ ftp }}   # 'ftp' (recommended) or 'ftp'
-          # port: ${{ 21 }}                   # add only if your host uses a non-default port
-          local-dir: .
-          server-dir: ${{ /public_html/my-php/ }}
+          server: ${{ secrets.FTP_SERVER }}            # e.g. testing.pixoustech.com
+          username: ${{ secrets.FTP_USERNAME }}        # e.g. test
+          password: ${{ secrets.FTP_PASSWORD }}        # your FTP password
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }} # 'ftp' (default), 'ftps', or 'sftp'
+          # port: ${{ secrets.FTP_PORT || 21 }}        # uncomment if non-default port
+          local-dir: .                                 # deploy EVERYTHING in repo root
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}    # e.g. /public_html/my-php/
+          # Keeps a manifest for faster diffs next run
+          state-name: .ftp-deploy-sync-state.json
+          # Exclude stuff you never want on the server
           exclude: |
             **/.git*
             **/.github/**
-            **/tests/**
             **/node_modules/**
             **/vendor/**
+            **/tests/**
             **/*.md
