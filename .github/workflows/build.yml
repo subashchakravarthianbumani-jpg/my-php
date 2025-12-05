@@ -1,27 +1,98 @@
-name: Build
+name: CI/CD (PHP + SonarQube + optional deploy)
 
 on:
   push:
-    branches:
-      - main
-
+    branches: [ main ]
+  pull_request:
 
 jobs:
-  build:
-    name: Build and analyze
-    runs-on: windows-latest
-    
+  # ---------- CI: Build & Test ----------
+  test:
+    name: Build & Test (coverage)
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: SonarSource/sonarqube-scan-action@v6
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          coverage: xdebug
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPUnit (generate coverage)
+        run: composer test
+
+      - name: Upload coverage artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: clover
+          path: build/logs/clover.xml
+
+  # ---------- SonarQube Scan ----------
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@v1
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # The action auto-detects sonar-project.properties and uploads coverage
+
+  # ---------- CD: Deploy (optional) ----------
+  deploy:
+    name: Deploy to server (SSH)
+    if: github.ref == 'refs/heads/main'   # only on main
+    runs-on: ubuntu-latest
+    needs: sonar                         # deploy only after CI + Sonar pass
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload site via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: |
+            *.php
+            public/**
+            composer.json
+          target: ${{ secrets.SSH_TARGET_DIR }}
+          overwrite: true
+
+      - name: Reload web server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            sudo systemctl reload apache2 || sudo systemctl reload nginx || true
